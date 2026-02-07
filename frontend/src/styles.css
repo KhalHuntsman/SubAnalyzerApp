@@ -1,3 +1,5 @@
+/* Base globals */
+
 :root {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   line-height: 1.4;
@@ -11,13 +13,29 @@ body {
 
 a { color: inherit; }
 
+
+/* Layout containers */
+
 .container {
   width: min(96vw, 1500px);
   margin: 0 auto;
   padding: 16px;
 }
 
-/* Shared panel styles */
+.row {
+  display: grid;
+  grid-template-columns: minmax(360px, 520px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .row { grid-template-columns: 1fr; }
+}
+
+
+/* Shared surface styling for cards and modals */
+
 .card,
 .modal {
   background: #13131a;
@@ -26,16 +44,8 @@ a { color: inherit; }
   padding: 16px;
 }
 
-.row{
-  display:grid;
-  grid-template-columns: minmax(360px, 520px) 1fr;
-  gap:16px;
-  align-items:start;
-}
 
-@media (max-width: 900px) {
-  .row { grid-template-columns: 1fr; }
-}
+/* Form controls and buttons */
 
 input,
 select,
@@ -61,19 +71,8 @@ button {
 button.primary { background: #2a62ff; border-color: #2a62ff; }
 button.danger  { background: #ff2a55; border-color: #ff2a55; }
 
-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 0;
-  gap: 12px;
-}
 
-nav .links {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+/* Text helpers and separators */
 
 small.muted,
 small.liMuted {
@@ -86,55 +85,19 @@ hr {
   margin: 16px 0;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
 
-.table th,
-.table td {
-  border-bottom: 1px solid #2a2a35;
-  padding: 10px;
-  text-align: left;
-  vertical-align: middle;
-}
-
-.table td:first-child {
-  max-width: 260px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.table td:last-child {
-  white-space: nowrap;
-}
-
-.table td.actions { text-align: center; }
-
-.badge {
-  display: inline-block;
-  padding: 3px 8px;
-  border: 1px solid #2a2a35;
-  border-radius: 999px;
-  font-size: 12px;
-}
-
-.table button {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 13px; /* kept the later value */
-  line-height: 1;
-}
+/* Tip / callout box */
 
 .tip {
   background: #0f0f15;
   border: 1px solid #2a2a35;
-  border-radius: 10px; /* fixed invalid 1-px */
+  border-radius: 10px;
   padding: 10px 12px;
   margin: 12px 0 16px;
 }
+
+
+/* Modal overlay and positioning */
 
 .modalOverlay {
   position: fixed;
@@ -151,6 +114,9 @@ hr {
   width: 100%;
   max-width: 420px;
 }
+
+
+/* Header and navigation */
 
 .headerBar {
   width: 100%;
@@ -213,6 +179,94 @@ hr {
   border-color: #2a62ff;
 }
 
+
+/* Horizontal scroll wrapper for tables on small screens */
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+
+/* Table layout and structure */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  min-width: 740px;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid #2a2a35;
+  padding: 10px;
+  vertical-align: middle;
+}
+
+.table th {
+  white-space: nowrap;
+}
+
+
+/* Column alignment rules */
+
+.table th.col-name,
+.table td.col-name {
+  text-align: left;
+}
+
+.table th.col-amt,
+.table td.col-amt,
+.table th.col-cadence,
+.table td.col-cadence,
+.table th.col-next,
+.table td.col-next,
+.table th.col-status,
+.table td.col-status,
+.table th.col-actions,
+.table td.col-actions {
+  text-align: center;
+}
+
+.table td.actions { text-align: center; }
+
+
+/* Text truncation and wrapping behavior */
+
+.table td:first-child {
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table td:last-child {
+  white-space: nowrap;
+}
+
+
+/* Table button sizing */
+
+.table button {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+
+/* Table utility elements */
+
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid #2a2a35;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
 .actionsRow {
   display: inline-flex;
   gap: 8px;
@@ -230,51 +284,10 @@ hr {
   vertical-align: bottom;
 }
 
-.table td input,
-.table td select {
-  min-width: 90px;
-}
 
-.table td select[name="cadence"] { min-width: 95px; }
-.table td select[name="status"]  { min-width: 100px; }
-.table td input[name="next_due_date"] { min-width: 90px; }
+/* Compact controls used inside editable table cells */
 
-.table{
-  width:100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-/* Default alignment */
-.table th,
-.table td{
-  vertical-align: middle;
-}
-
-/* Name column left-aligned */
-.table th.col-name,
-.table td.col-name{
-  text-align: left;
-}
-
-/* Everything else centered */
-.table th.col-amt,
-.table td.col-amt,
-.table th.col-cadence,
-.table td.col-cadence,
-.table th.col-next,
-.table td.col-next,
-.table th.col-status,
-.table td.col-status,
-.table th.col-actions,
-.table td.col-actions{
-  text-align: center;
-}
-
-
-/* Tighten controls inside table cells */
-.table td input,
-.table td select{
+.tableControl {
   width: auto;
   max-width: 100%;
   padding: 6px 8px;
@@ -282,59 +295,26 @@ hr {
   font-size: 13px;
 }
 
-/* Make common fields intentionally compact */
-.table td.col-amt input{
+
+/* Column-specific sizing for edit controls */
+
+td.col-amt .tableControl {
   width: 90px;
   text-align: center;
+  margin: 0 auto;
+  display: inline-block;
 }
 
-.table td.col-next input{
+td.col-next .tableControl {
   width: 130px;
   text-align: center;
+  margin: 0 auto;
+  display: inline-block;
 }
 
-.table td.col-status select{
+td.col-cadence .tableControl,
+td.col-status .tableControl {
   width: 110px;
-}
-
-.table td.col-cadence select{
-  width: 110px;
-}
-
-/* tighter inputs/selects inside table cells */
-.tableControl{
-  width: auto;
-  max-width: 100%;
-  padding: 6px 8px;
-  font-size: 13px;
-}
-
-/* fine-tuned per column */
-td.col-amt .tableControl{ width: 90px; text-align: center; margin: 0 auto; display: inline-block; }
-td.col-next .tableControl{ width: 130px; text-align: center; margin: 0 auto; display: inline-block; }
-td.col-cadence .tableControl{ width: 110px; margin: 0 auto; display: inline-block; }
-td.col-status .tableControl{ width: 110px; margin: 0 auto; display: inline-block; }
-
-/* center these columns */
-th.col-amt, td.col-amt,
-th.col-cadence, td.col-cadence,
-th.col-next, td.col-next,
-th.col-status, td.col-status,
-th.col-actions, td.col-actions{
-  text-align: center;
-}
-
-.tableWrap{
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.table{
-  min-width: 740px; /* tweak: 700–900 depending on your columns */
-}
-
-/* Prevent header words from stacking into each other */
-.table th{
-  white-space: nowrap;
+  margin: 0 auto;
+  display: inline-block;
 }

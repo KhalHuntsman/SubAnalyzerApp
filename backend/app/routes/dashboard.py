@@ -17,7 +17,11 @@ bp = Blueprint("dashboard", __name__)
 
 
 def _monthly_equivalent(amount: float, cadence: str) -> float:
-    """Convert an amount + cadence into a monthly-equivalent cost."""
+    """Convert an amount + cadence into a monthly-equivalent cost.
+
+    Note: weekly uses 52/12 as an approximation (not 365.25/7), which is fine for
+    budgeting summaries but will never be perfectly exact month-to-month.
+    """
     if cadence == "weekly":
         return amount * 52 / 12
     if cadence == "monthly":
@@ -27,6 +31,7 @@ def _monthly_equivalent(amount: float, cadence: str) -> float:
     if cadence == "yearly":
         return amount / 12
 
+    # Fallback: treat unknown cadence as monthly to avoid breaking the dashboard.
     return amount
 
 
@@ -36,6 +41,7 @@ def dashboard():
     """Return a summary of active subscriptions and upcoming charges."""
     user_id = int(get_jwt_identity())
 
+    # Dashboard only considers active subscriptions to match the user's "current spend".
     subscriptions = Subscription.query.filter_by(
         user_id=user_id,
         status="active"
@@ -46,14 +52,17 @@ def dashboard():
 
     upcoming = []
     today = date.today()
-    window_end = today + timedelta(days=30)
+    window_end = today + timedelta(days=30)  # Rolling 30-day window for "upcoming" charges.
 
     for sub in subscriptions:
         amount = float(sub.amount)
 
-        monthly_total += _monthly_equivalent(amount, sub.cadence)
-        annual_total += _monthly_equivalent(amount, sub.cadence) * 12
+        # Compute totals in a cadence-agnostic way using monthly equivalents.
+        monthly_equiv = _monthly_equivalent(amount, sub.cadence)
+        monthly_total += monthly_equiv
+        annual_total += monthly_equiv * 12
 
+        # Upcoming charges are based on the stored next_due_date (no recurrence expansion here).
         if today <= sub.next_due_date <= window_end:
             upcoming.append({
                 "subscription_id": sub.id,
@@ -63,8 +72,10 @@ def dashboard():
                 "cadence": sub.cadence,
             })
 
+    # Sort by ISO date string for stable chronological ordering.
     upcoming.sort(key=lambda x: x["due_date"])
 
+    # Surface the highest nominal charge amounts (not monthly-equivalent) for quick visibility.
     top_subs = sorted(
         subscriptions,
         key=lambda s: float(s.amount),

@@ -9,9 +9,11 @@ export default function ConfirmModal({
   onConfirm,
   onCancel
 }) {
+  // Render nothing when closed so the modal is fully removed from the DOM.
   if (!open) return null
 
   return (
+    // Overlay blocks interaction with the background and centers the modal.
     <div className="modalOverlay">
       <div className="modal">
         <h3>{title}</h3>

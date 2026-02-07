@@ -5,6 +5,7 @@ import { useAuth } from "../state/AuthContext.jsx"
 export default function Header() {
   const { user, logout, isAuthed } = useAuth()
 
+  // Helper to apply active styling to NavLink buttons.
   const navClass = ({ isActive }) =>
     "navBtn" + (isActive ? " navBtnActive" : "")
 
@@ -15,6 +16,7 @@ export default function Header() {
           <Link to={isAuthed ? "/" : "/login"} className="brandLink">Sub Finder</Link>
         </div>
 
+        {/* Render full navigation when authenticated, auth links otherwise */}
         {isAuthed ? (
           <>
             <nav className="navButtons">

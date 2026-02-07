@@ -24,6 +24,7 @@ function usToIso(us) {
 }
 
 function isUsDate(us) {
+  // Keep UI input strict so the backend can safely parse + store ISO.
   return /^\d{2}\/\d{2}\/\d{4}$/.test(us)
 }
 
@@ -69,6 +70,7 @@ export default function Subscriptions() {
     }
   }
 
+  // Load once on mount (token is stable in this app flow; AuthContext/localStorage handles auth changes).
   useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function onChange(e) {
@@ -79,6 +81,7 @@ export default function Subscriptions() {
     e.preventDefault()
     setError(null)
 
+    // Fast client-side validation for immediate feedback (backend still validates).
     if (!form.name.trim()) {
       setError("Name is required.")
       return
@@ -91,6 +94,7 @@ export default function Subscriptions() {
     const payload = {
       ...form,
       name: form.name.trim(),
+      // UI uses MM/DD/YYYY but API stores ISO.
       next_due_date: usToIso(form.next_due_date),
     }
 
@@ -240,6 +244,7 @@ export default function Subscriptions() {
           {subs.length === 0 ? (
             <p><small className="muted">No subscriptions yet.</small></p>
           ) : (
+            // Wrapper enables horizontal scroll on small screens without breaking table-layout: fixed.
             <div className="tableWrap">
               <table className="table">
                 {/* Force predictable widths with table-layout: fixed */}

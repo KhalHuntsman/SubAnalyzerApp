@@ -27,6 +27,7 @@ def list_subscriptions():
 
     query = Subscription.query.filter_by(user_id=user_id)
 
+    # Optional status filter supports UI tabs (active vs canceled).
     if status:
         query = query.filter_by(status=status)
 
@@ -63,6 +64,8 @@ def create_subscription():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
+    # Merchant key is used for grouping/detection; deriving from name keeps behavior consistent
+    # even when the user manually creates/edit subscriptions.
     merchant_key = normalize_merchant(name)
 
     sub = Subscription(
@@ -86,7 +89,7 @@ def create_subscription():
 @bp.patch("/<int:sub_id>")
 @jwt_required()
 def update_subscription(sub_id):
-    """Update subscription fields."""
+    """Partially update subscription fields (PATCH)."""
     user_id = int(get_jwt_identity())
 
     sub = Subscription.query.get(sub_id)
@@ -103,7 +106,7 @@ def update_subscription(sub_id):
             return jsonify({"error": "Name cannot be empty."}), 400
 
         sub.name = name
-        sub.merchant_key = normalize_merchant(name)
+        sub.merchant_key = normalize_merchant(name)  # Keep grouping key in sync with visible name.
 
     if "amount" in data:
         try:

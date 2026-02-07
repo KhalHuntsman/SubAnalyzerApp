@@ -8,7 +8,10 @@ export default function Dashboard() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    // Guard against setting state if the component unmounts before the request completes.
+    // (Avoids React warnings and racey UI state.)
     let cancelled = false
+
     async function load() {
       try {
         const d = await apiFetch('/api/dashboard', { token })
@@ -17,9 +20,10 @@ export default function Dashboard() {
         if (!cancelled) setError(e.message)
       }
     }
+
     load()
     return () => { cancelled = true }
-  }, [token])
+  }, [token]) // Reload if auth token changes (login/logout/refresh)
 
   return (
     <div className="container">

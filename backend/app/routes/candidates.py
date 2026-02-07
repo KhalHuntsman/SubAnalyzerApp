@@ -22,15 +22,17 @@ bp = Blueprint("candidates", __name__)
 @bp.get("")
 @jwt_required()
 def list_candidates():
-    """Return candidates filtered by status."""
+    """Return recurring candidates for the current user, optionally filtered by status."""
     user_id = int(get_jwt_identity())
     status = request.args.get("status", "pending")
 
     query = RecurringCandidate.query.filter_by(user_id=user_id)
 
+    # Status filtering lets the UI show separate queues (pending/confirmed/ignored).
     if status:
         query = query.filter_by(status=status)
 
+    # Highest-confidence candidates first to reduce review time.
     candidates = query.order_by(
         RecurringCandidate.confidence.desc()
     ).all()
@@ -41,7 +43,7 @@ def list_candidates():
 @bp.patch("/<int:cand_id>")
 @jwt_required()
 def update_candidate(cand_id):
-    """Edit candidate fields or update status."""
+    """Edit candidate fields (name/amount/cadence) or workflow status."""
     user_id = int(get_jwt_identity())
 
     candidate = RecurringCandidate.query.get(cand_id)
@@ -51,7 +53,8 @@ def update_candidate(cand_id):
 
     data = request.get_json(silent=True) or {}
 
-    # Update display name and merchant key
+    # If the display name changes, re-normalize to keep grouping consistent
+    # with what the user actually sees/confirmed.
     if "display_name" in data:
         name = (data.get("display_name") or "").strip()
 
@@ -61,14 +64,13 @@ def update_candidate(cand_id):
         candidate.display_name = name
         candidate.merchant_key = normalize_merchant(name)
 
-    # Update amount
+    # Parse and validate monetary inputs centrally to keep API behavior consistent.
     if "avg_amount" in data:
         try:
             candidate.avg_amount = parse_amount(data.get("avg_amount"))
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
 
-    # Update cadence guess
     if "cadence_guess" in data:
         cadence = (data.get("cadence_guess") or "").strip().lower()
 
@@ -79,10 +81,10 @@ def update_candidate(cand_id):
 
         candidate.cadence_guess = cadence
 
-    # Update workflow status
     if "status" in data:
         status_value = (data.get("status") or "").strip().lower()
 
+        # Keep workflow states explicit; these map cleanly to UI filters.
         if status_value not in {"pending", "confirmed", "ignored"}:
             return jsonify({
                 "error": "status must be pending, confirmed, or ignored."
@@ -98,7 +100,7 @@ def update_candidate(cand_id):
 @bp.post("/<int:cand_id>/confirm")
 @jwt_required()
 def confirm_candidate(cand_id):
-    """Convert a candidate into a subscription."""
+    """Convert a pending candidate into a subscription and mark it as confirmed."""
     user_id = int(get_jwt_identity())
 
     candidate = RecurringCandidate.query.get(cand_id)
@@ -111,7 +113,8 @@ def confirm_candidate(cand_id):
             "error": "Only pending candidates can be confirmed."
         }), 400
 
-    # Create a new subscription from candidate data
+    # We copy the candidate fields into a real subscription record so the user can
+    # manage it like any other subscription (edit, cancel, delete, etc.).
     subscription = Subscription(
         user_id=user_id,
         name=candidate.display_name,
@@ -128,9 +131,8 @@ def confirm_candidate(cand_id):
     )
 
     db.session.add(subscription)
-    db.session.flush()  # Assign ID before committing
+    db.session.flush()  # Ensures subscription.id exists before we reference it below.
 
-    # Mark candidate as confirmed
     candidate.status = "confirmed"
     candidate.confirmed_subscription_id = subscription.id
 
@@ -145,7 +147,7 @@ def confirm_candidate(cand_id):
 @bp.delete("/<int:cand_id>")
 @jwt_required()
 def delete_candidate(cand_id):
-    """Delete a candidate."""
+    """Delete a candidate (does not affect subscriptions unless it was confirmed separately)."""
     user_id = int(get_jwt_identity())
 
     candidate = RecurringCandidate.query.get(cand_id)

@@ -16,6 +16,7 @@ export default function Candidates() {
   async function load(s = status) {
     setError(null)
     try {
+      // Server-side status filtering keeps the payload small and matches UI tabs.
       const data = await apiFetch(`/api/candidates?status=${encodeURIComponent(s)}`, { token })
       setCands(data)
     } catch (e) {
@@ -23,10 +24,12 @@ export default function Candidates() {
     }
   }
 
+  // Reload list whenever the selected status changes.
   useEffect(() => { load() }, [status])
 
   async function confirmCand(c) {
     try {
+      // Confirm converts the candidate into a real subscription on the backend.
       await apiFetch(`/api/candidates/${c.id}/confirm`, { token, method: 'POST' })
       await load()
     } catch (e) {
@@ -36,6 +39,7 @@ export default function Candidates() {
 
   async function ignoreCand(c) {
     try {
+      // Ignore keeps the history but removes it from the review queue.
       await apiFetch(`/api/candidates/${c.id}`, { token, method: 'PATCH', body: { status: 'ignored' } })
       await load()
     } catch (e) {
@@ -106,11 +110,11 @@ export default function Candidates() {
                   <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {status === 'pending' && (
                       <>
-                        <button className="primary" onClick={() => confirmCand(c)}>Confirm</button>
-                        <button onClick={() => ignoreCand(c)}>Ignore</button>
+                        <button type="button" className="primary" onClick={() => confirmCand(c)}>Confirm</button>
+                        <button type="button" onClick={() => ignoreCand(c)}>Ignore</button>
                       </>
                     )}
-                    <button className="danger" onClick={() => requestDelete(c)}>Delete</button>
+                    <button type="button" className="danger" onClick={() => requestDelete(c)}>Delete</button>
                   </td>
                 </tr>
               ))}

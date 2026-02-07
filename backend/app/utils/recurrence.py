@@ -33,10 +33,11 @@ def _cadence_from_gaps(gaps: list[int]) -> tuple[str | None, float]:
     if not gaps:
         return None, 0.0
 
+    # Median is more robust than mean when one-off delays happen (holidays, weekends, processing lag).
     med = median(gaps)
 
-    # Known cadence targets and tolerance ranges
-    # Monthly is intentionally wider because real billing varies (28-35 days)
+    # Known cadence targets and tolerance ranges.
+    # Monthly is intentionally wider because real billing varies (28-35 days).
     buckets = [
         ("weekly", 7, 2),
         ("monthly", 30, 7),
@@ -66,6 +67,7 @@ def _amount_stability(amounts: list[float], tolerance_ratio: float = 0.12) -> fl
     if not amounts:
         return 0.0
 
+    # Median again reduces the impact of occasional tax/fees or partial months.
     med = median(amounts)
 
     if med == 0:
@@ -89,6 +91,8 @@ def _merchant_signal(merchant_key: str, display_name: str) -> float:
 
     text = f"{merchant_key} {display_name}".lower()
 
+    # Curated keyword lists: keep these tight and biased toward high-signal terms.
+    # (The goal is to nudge borderline cases, not to "detect" subscriptions purely by keywords.)
     boost_keywords = [
         "netflix", "hulu", "spotify", "pandora", "apple", "icloud", "itunes", "app store",
         "max", "hbomax", "disney", "prime", "amazon prime", "youtube", "yt premium",
@@ -116,7 +120,7 @@ def _merchant_signal(merchant_key: str, display_name: str) -> float:
     if any(k in text for k in penalty_keywords):
         score -= 0.35
 
-    # Clamp to a reasonable range
+    # Clamp to a reasonable range so keywords can't overpower cadence/amount signals.
     if score < 0.5:
         score = 0.5
     if score > 1.25:
@@ -126,7 +130,11 @@ def _merchant_signal(merchant_key: str, display_name: str) -> float:
 
 
 def _predict_next(last_seen: date, cadence: str) -> date:
-    """Predict the next charge date from cadence."""
+    """Predict the next charge date from cadence.
+
+    Note: Month/quarter are approximated as 30/91 days; this is for "heads up" UX,
+    not exact billing-day forecasting.
+    """
     if cadence == "weekly":
         return last_seen + timedelta(days=7)
     if cadence == "monthly":
@@ -146,7 +154,7 @@ def detect_recurring(
     Returns a CandidateResult if detected, otherwise None.
     """
 
-    # Sort charges by date
+    # Sort charges by date so gaps and "last seen" are consistent.
     sorted_charges = sorted(charges, key=lambda x: x[0])
 
     if len(sorted_charges) < 2:
@@ -168,8 +176,8 @@ def detect_recurring(
 
     amount_score = _amount_stability(amounts)
 
-    # Evidence factor: fewer occurrences => lower confidence ceiling
-    # 2 charges => weaker evidence, 3+ charges => full strength
+    # Evidence factor: fewer occurrences => lower confidence ceiling.
+    # This prevents 2-charge "coincidences" from dominating the candidate list.
     n = len(sorted_charges)
     if n >= 5:
         evidence = 1.0
@@ -180,16 +188,15 @@ def detect_recurring(
     else:
         evidence = 0.6
 
-    # Merchant signal helps filter obvious false positives (food/delivery)
     merchant_factor = _merchant_signal(merchant_key, display_name)
 
-    # Weighted confidence score
-    # Increase weight on cadence (most important signal), but keep amount as supporting signal.
+    # Weighted confidence score:
+    # cadence is the primary signal; amount stability is secondary support.
     base_confidence = (0.75 * cadence_score) + (0.25 * amount_score)
     confidence = round(base_confidence * evidence * merchant_factor, 4)
 
     # Thresholds:
-    # - With 2 occurrences we allow only stronger merchant signals (factor > 0.95) and higher cadence score
+    # With only 2 occurrences, require "perfect" cadence match + non-penalized merchant signal.
     if n == 2:
         if merchant_factor < 0.95 or cadence_score < 1.0:
             return None
@@ -199,6 +206,7 @@ def detect_recurring(
         if confidence < 0.50:
             return None
 
+    # Decimal(str(...)) avoids float rounding artifacts when formatting money.
     avg_amount = float(
         round(Decimal(str(median(amounts))), 2)
     )

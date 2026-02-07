@@ -10,6 +10,7 @@ import React, {
 const AuthContext = createContext(null)
 
 function parseJwt(token) {
+  // Decode JWT payload (no signature validation; used only for exp countdown on the client).
   try {
     const base64 = token.split(".")[1]
     const json = atob(base64.replace(/-/g, "+").replace(/_/g, "/"))
@@ -33,6 +34,7 @@ function getSecondsUntilExpiry(accessToken) {
 }
 
 export function AuthProvider({ children }) {
+  // Access token is used for API calls; refresh token is stored separately for silent refresh.
   const [token, setToken] = useState(() => (
     localStorage.getItem('access_token') || localStorage.getItem('token') || null
   ))
@@ -45,6 +47,7 @@ export function AuthProvider({ children }) {
   const [showExpiryModal, setShowExpiryModal] = useState(false)
   const [countdown, setCountdown] = useState(0)
 
+  // Used to throttle refresh calls so rapid clicks/keypresses don't spam /refresh.
   const lastRefreshRef = useRef(0)
 
   function logout() {
@@ -62,6 +65,7 @@ export function AuthProvider({ children }) {
     const refresh = localStorage.getItem("refresh_token")
     if (!refresh) throw new Error("Missing refresh token")
 
+    // Refresh endpoint uses the refresh token as a Bearer token.
     const res = await fetch("/api/auth/refresh", {
       method: "POST",
       headers: { Authorization: `Bearer ${refresh}` },
@@ -78,7 +82,7 @@ export function AuthProvider({ children }) {
   async function noteActivity() {
     const now = Date.now()
 
-    // throttle refresh attempts (max once per 30s)
+    // Throttle refresh attempts (max once per 30s).
     if (now - lastRefreshRef.current < 30000) return
 
     const access = localStorage.getItem("access_token")
@@ -86,13 +90,14 @@ export function AuthProvider({ children }) {
 
     const secondsLeft = getSecondsUntilExpiry(access)
 
-    // only refresh when within 3 minutes of expiry
+    // Only refresh when within 3 minutes of expiry to reduce unnecessary calls.
     if (secondsLeft <= 180) {
       try {
         lastRefreshRef.current = now
         await refreshAccessToken()
         setShowExpiryModal(false)
       } catch {
+        // If refresh fails, treat as expired session.
         logout()
       }
     }
@@ -107,7 +112,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // Keep legacy key in sync so old code paths won't break
+  // Keep legacy key in sync so old code paths won't break.
   useEffect(() => {
     if (token) {
       localStorage.setItem("access_token", token)
@@ -123,12 +128,13 @@ export function AuthProvider({ children }) {
     else localStorage.removeItem('user')
   }, [user])
 
-  // Countdown + auto logout + listen for activity
+  // Countdown + auto logout + listen for activity.
   useEffect(() => {
     function onAnyActivity() {
       noteActivity()
     }
 
+    // Capture phase helps catch events even if inner components stop propagation.
     window.addEventListener("click", onAnyActivity, true)
     window.addEventListener("keydown", onAnyActivity, true)
 
@@ -143,6 +149,7 @@ export function AuthProvider({ children }) {
         return
       }
 
+      // Show warning modal during the final 3 minutes before expiry.
       if (secondsLeft <= 180) {
         setShowExpiryModal(true)
         setCountdown(secondsLeft)
@@ -165,6 +172,7 @@ export function AuthProvider({ children }) {
     user,
     isAuthed: Boolean(token),
     login: ({ access_token, refresh_token, user }) => {
+      // Persist tokens so apiFetch can work across refreshes/reloads.
       if (access_token) {
         localStorage.setItem("access_token", access_token)
         localStorage.setItem("token", access_token) // legacy

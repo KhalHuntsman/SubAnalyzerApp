@@ -14,8 +14,14 @@ export default function Login() {
   async function onSubmit(e) {
     e.preventDefault()
     setError(null)
+
     try {
-      const data = await apiFetch('/api/auth/login', { method: 'POST', body: { email, password } })
+      // Authenticate with backend, persist tokens via auth context, then redirect home.
+      const data = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        body: { email, password }
+      })
+
       login(data)
       nav('/')
     } catch (err) {
@@ -27,19 +33,43 @@ export default function Login() {
     <div className="container">
       <div className="card" style={{maxWidth: 520, margin: '24px auto'}}>
         <h2>Login</h2>
-        <p><small className="muted">Use your account to view your dashboard and manage subscriptions.</small></p>
+        <p>
+          <small className="muted">
+            Use your account to view your dashboard and manage subscriptions.
+          </small>
+        </p>
+
         {error && <p style={{color:'#ff8899'}}>{error}</p>}
+
         <form onSubmit={onSubmit}>
           <label>Email</label>
-          <input value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="you@example.com" />
+          <input
+            value={email}
+            onChange={(e)=>setEmail(e.target.value)}
+            placeholder="you@example.com"
+          />
+
           <div style={{height:10}} />
+
           <label>Password</label>
-          <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="••••••••" />
+          <input
+            type="password"
+            value={password}
+            onChange={(e)=>setPassword(e.target.value)}
+            placeholder="••••••••"
+          />
+
           <div style={{height:16}} />
           <button className="primary" type="submit">Log In</button>
         </form>
+
         <hr />
-        <p><small className="muted">No account yet? <Link to="/register">Create one</Link>.</small></p>
+
+        <p>
+          <small className="muted">
+            No account yet? <Link to="/register">Create one</Link>.
+          </small>
+        </p>
       </div>
     </div>
   )
